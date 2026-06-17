@@ -86,5 +86,4 @@ Khi một thành viên hoàn thành huấn luyện mô hình của mình trong J
 2. Bỏ file đó vào thư mục `backend/app/saved_models/`.
 3. Mở file dịch vụ tương ứng tại `backend/app/services/models/{your_model}.py` và dán logic dự đoán/tiền xử lý cụ thể của bạn vào hàm `predict`.
 4. Khởi động server, API sẽ tự động chuyển trạng thái của mô hình từ **Giả lập (Mock/Placeholder)** sang **Thật (Active)**.
-
 *Đọc chi tiết hướng dẫn lập trình và tích hợp tại [backend/README.md](backend/README.md).*
