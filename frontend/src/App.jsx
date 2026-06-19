@@ -14,7 +14,7 @@ const MOCK_DATA = {
   studytime: 3, failures: 0, schoolsup: "no", famsup: "yes",
   paid: "no", activities: "yes", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 2,
-  Dalc: 1, Walc: 2, health: 4, absences: 4, G1: 14, G2: 15,
+  Dalc: 1, Walc: 2, health: 4, absences: 4,
 };
 
 const INIT_FORM = {
@@ -24,10 +24,10 @@ const INIT_FORM = {
   studytime: 2, failures: 0, schoolsup: "no", famsup: "no",
   paid: "no", activities: "no", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 3,
-  Dalc: 1, Walc: 1, health: 3, absences: 0, G1: 10, G2: 11,
+  Dalc: 1, Walc: 1, health: 3, absences: 0,
 };
 
-const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences","G1","G2"];
+const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences"];
 
 const gradeColor = (g) => g >= 15 ? "#22c55e" : g >= 10 ? "#f59e0b" : "#ef4444";
 const gradeLabel = (g) => g >= 18 ? "Xuất sắc" : g >= 15 ? "Giỏi" : g >= 12 ? "Khá" : g >= 10 ? "Trung bình" : "Yếu";
@@ -239,17 +239,6 @@ function Tab3({ form, handle }) {
         <FSlider label="Sức khỏe hiện tại (health)" name="health" min={1} max={5} value={form.health} onChange={handle} />
         <FNumber label="Số buổi nghỉ học (absences, 0–93)" name="absences" min={0} max={93} value={form.absences} onChange={handle} />
       </div>
-      <div style={{ backgroundColor: "#0a1628", borderRadius: "12px", padding: "16px", border: "1px solid rgba(99,102,241,0.3)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px", alignItems: "end" }}>
-        <div style={{ gridColumn: "1 / -1" }}>
-          <p style={{ color: "#818cf8", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: "0 0 8px 0" }}>📊 Điểm số kỳ trước</p>
-        </div>
-        <FNumber label="Điểm kỳ 1 (G1, 0–20)" name="G1" min={0} max={20} value={form.G1} onChange={handle} />
-        <FNumber label="Điểm kỳ 2 (G2, 0–20)" name="G2" min={0} max={20} value={form.G2} onChange={handle} />
-        <div style={{ paddingBottom: "8px" }}>
-          <p style={{ color: "#64748b", fontSize: "12px", margin: "0 0 2px 0" }}>Dự đoán G3</p>
-          <p style={{ color: "#818cf8", fontSize: "28px", fontWeight: 700, fontFamily: "monospace", margin: 0 }}>?</p>
-        </div>
-      </div>
     </div>
   );
 }
@@ -304,7 +293,7 @@ function AllResults({ results }) {
 const TABS = [
   { id: 0, label: "Cá nhân & Gia đình", icon: User },
   { id: 1, label: "Học tập & Bối cảnh", icon: BookOpen },
-  { id: 2, label: "Lối sống & Điểm số", icon: Heart },
+  { id: 2, label: "Lối sống & Sinh hoạt", icon: Heart },
 ];
 
 export default function App() {
@@ -367,7 +356,7 @@ export default function App() {
             <School size={18} color="#fff" />
           </div>
           <div>
-          <h1 style={{ margin: 0, fontSize: "16px", fontWeight: 700, lineHeight: 1.2, color: "#ffffff" }}>Hệ thống Dự đoán Kết quả Học tập</h1>
+            <h1 style={{ margin: 0, fontSize: "16px", fontWeight: 700, lineHeight: 1.2 }}>Hệ thống Dự đoán Kết quả Học tập</h1>
             <p style={{ margin: 0, fontSize: "12px", color: "#64748b", lineHeight: 1.2 }}>Dự đoán điểm G3 cuối kỳ dựa trên 32 đặc trưng của sinh viên</p>
           </div>
         </div>
