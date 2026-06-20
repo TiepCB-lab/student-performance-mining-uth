@@ -29,9 +29,9 @@ Thư mục này chứa toàn bộ mã nguồn Backend của dự án dự đoán
    # Hoặc kích hoạt trên macOS/Linux:
    source venv/bin/activate
    ```
-3. Cài đặt các thư viện phụ thuộc:
+3. Cài đặt các thư viện phụ thuộc (đường dẫn tương đối trỏ ra file requirements.txt ở gốc):
    ```bash
-   pip install -r requirements.txt
+   pip install -r ../requirements.txt
    ```
 4. Khởi động server:
    ```bash
