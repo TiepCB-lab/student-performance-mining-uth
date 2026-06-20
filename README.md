@@ -1,4 +1,4 @@
-# Dự án Khai phá Dữ liệu: Dự đoán Kết quả Học tập Sinh viên (UTH) - Backend API
+# Dự án Khai phá Dữ liệu: Dự đoán Kết quả Học tập Sinh viên (UTH)
 
 Dự án này xây dựng khung Backend API nhằm phục vụ cho bài toán phân tích và dự đoán điểm số cuối kỳ (G3) của sinh viên dựa trên tập dữ liệu học tập và thói quen sinh hoạt từ file [Student_Performance.csv](data/raw/Student_Performance.csv).
 
@@ -8,7 +8,7 @@ Dự án được thiết kế theo mô hình **Pluggable Architecture** (Kiến
 
 ## 📂 Cấu trúc thư mục dự án
 
-```
+```text
 student-performance-mining-uth/
 ├── backend/          # Backend API (Python + FastAPI)
 │   ├── app/          # Mã nguồn chính của ứng dụng
@@ -41,6 +41,7 @@ student-performance-mining-uth/
 - Python 3.8+ (khuyên dùng Python 3.10 hoặc 3.11).
 
 ### Các bước khởi chạy:
+--Khởi chạy backend
 1. Mở một terminal tại thư mục `backend/`.
 2. Khởi tạo môi trường ảo (khuyên dùng):
    ```bash
@@ -61,6 +62,22 @@ student-performance-mining-uth/
    API sẽ chạy tại địa chỉ [http://127.0.0.1:8000](http://127.0.0.1:8000).
    Bạn có thể xem tài liệu tự động và thử nghiệm trực tiếp tại: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
+-- Khởi chạy frontend
+⚠️ Lưu ý: Đảm bảo bạn vẫn đang giữ Terminal của Backend chạy ngầm. Hãy mở một Terminal mới để thực hiện các bước sau:
+
+1. Di chuyển vào thư mục frontend:
+Bash
+cd frontend
+
+2. Cài đặt các gói thư viện Node.js:
+Bash
+npm install
+
+3. Khởi chạy giao diện:
+Bash
+npm run dev
+💡 Giao diện web sẽ hoạt động tại địa chỉ hiển thị trên Terminal (thường là http://localhost:5173). Dữ liệu nhập từ web sẽ gọi thẳng vào Backend API ở cổng 8000.
+
 ---
 
 ## 🤝 Hướng dẫn làm việc nhóm & Tích hợp mô hình
@@ -70,5 +87,4 @@ Khi một thành viên hoàn thành huấn luyện mô hình của mình trong J
 2. Bỏ file đó vào thư mục `models/` ở gốc dự án.
 3. Mở file dịch vụ tương ứng tại `backend/app/services/models/{your_model}.py` và dán logic dự đoán/tiền xử lý cụ thể của bạn vào hàm `predict`.
 4. Khởi động server, API sẽ tự động chuyển trạng thái của mô hình từ **Giả lập (Mock/Placeholder)** sang **Thật (Active)**.
-
 *Đọc chi tiết hướng dẫn lập trình và tích hợp tại [backend/README.md](backend/README.md).*

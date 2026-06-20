@@ -31,3 +31,15 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+# File tạm của Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# File hệ thống và file rác của VS Code
+.vscode/
+.DS_Store
+
+# Các file model (nếu bạn không muốn đẩy model lên git)
+*.pkl
+*.joblib
