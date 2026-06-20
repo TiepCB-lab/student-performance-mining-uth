@@ -2,7 +2,6 @@ from typing import Dict, List, Optional
 from app.services.base_model import BaseModelService
 from app.services.models.random_forest import RandomForestService
 from app.services.models.svm import SVMService
-from app.services.models.xgboost import XGBoostService
 from app.services.models.neural_network import NeuralNetworkService
 
 # Khởi tạo instance của tất cả các mô hình dịch vụ
@@ -10,7 +9,6 @@ from app.services.models.neural_network import NeuralNetworkService
 services: Dict[str, BaseModelService] = {
     "random_forest": RandomForestService(),
     "svm": SVMService(),
-    "xgboost": XGBoostService(),
     "neural_network": NeuralNetworkService()
 }
 

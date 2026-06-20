@@ -1,9 +1,36 @@
-# Môi trường ảo
+# Python virtual environments
 venv/
 .venv/
 env/
 ENV/
 
+# Python compiled bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/
+
+# Datasets (Avoid pushing large datasets to Git)
+# data/raw/Student_Performance.csv
+
+# Trained model binaries (pkl files)
+/models/
+
+# IDE configurations
+.vscode/
+.idea/
+
+# OS temporary files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
 # File tạm của Python
 __pycache__/
 *.py[cod]

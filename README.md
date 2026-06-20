@@ -1,32 +1,33 @@
 # Dự án Khai phá Dữ liệu: Dự đoán Kết quả Học tập Sinh viên (UTH)
 
-Dự án này xây dựng hệ thống phục vụ cho bài toán phân tích và dự đoán điểm số cuối kỳ (G3) của sinh viên dựa trên tập dữ liệu học tập và thói quen sinh hoạt từ file [student_data.csv](data/student_data.csv).
+Dự án này xây dựng khung Backend API nhằm phục vụ cho bài toán phân tích và dự đoán điểm số cuối kỳ (G3) của sinh viên dựa trên tập dữ liệu học tập và thói quen sinh hoạt từ file [Student_Performance.csv](data/raw/Student_Performance.csv).
 
 Dự án được thiết kế theo mô hình **Pluggable Architecture** (Kiến trúc cắm rút), cho phép mỗi thành viên trong nhóm tự huấn luyện mô hình của mình độc lập (như Random Forest, SVM, XGBoost, Mạng Nơ-ron...) rồi tích hợp trực tiếp vào cấu trúc backend đã dựng sẵn mà không cần thay đổi code lõi của hệ thống.
 
 ---
 
-## 📂 Cấu trúc thư mục
+## 📂 Cấu trúc thư mục dự án
 
 ```text
 student-performance-mining-uth/
 ├── backend/          # Backend API (Python + FastAPI)
 │   ├── app/          # Mã nguồn chính của ứng dụng
-│   │   ├── config.py # Cấu hình môi trường (Host, Port, CORS...)
-│   │   ├── main.py   # File khởi tạo FastAPI server chính
-│   │   ├── models/   # Nơi các thành viên lưu file mô hình đã train (.pkl, .joblib...)
-│   │   ├── routers/  # Các API endpoints (/predict, /models)
-│   │   ├── schemas/  # Pydantic schemas chuẩn hóa cấu trúc dữ liệu sinh viên
-│   │   └── services/ # Logic tiền xử lý chung và nạp/dự đoán của các mô hình
-│   ├── run.py        # File khởi động nhanh Backend
-│   └── README.md     # Hướng dẫn chi tiết chạy & tích hợp mô hình cho Backend
+│   │   ├── core/     # Chứa cấu hình lõi (config.py)
+│   │   ├── routes/   # Các API endpoints (/predict, /models)
+│   │   ├── schemas/  # Pydantic schemas dữ liệu sinh viên
+│   │   └── services/ # Logic tiền xử lý và nạp/dự đoán của mô hình
+│   └── run.py        # File khởi động nhanh Backend
 │
-├── frontend/         # Giao diện Web (ReactJS + Vite + Tailwind CSS)
-│   ├── src/          # Mã nguồn chứa giao diện chính (App.jsx)
-│   ├── package.json  # Danh sách các thư viện Node.js
-│   └── tailwind.config.js # Cấu hình CSS
-│
-├── data/             # Thư mục chứa tập dữ liệu gốc (student_data.csv)
+├── frontend/         # Thư mục chứa mã nguồn giao diện Web
+├── data/             # Thư mục chứa tập dữ liệu
+│   └── raw/          # Lưu trữ tập dữ liệu thô ban đầu (Student_Performance.csv)
+├── models/           # Thư mục lưu trữ các file mô hình đã train (.pkl, .joblib...)
+├── notebooks/        # Thư mục lưu trữ Jupyter Notebook để EDA/Thử nghiệm nháp
+├── training/         # Luồng huấn luyện & đánh giá mô hình dạng module sản xuất
+│   └── train.py
+├── reports/          # Thư mục lưu trữ biểu đồ và báo cáo đánh giá mô hình
+│   ├── charts/
+│   └── metrics/
 └── README.md         # Hướng dẫn tổng quan (File này)
 ```
 
@@ -81,9 +82,9 @@ npm run dev
 
 ## 🤝 Hướng dẫn làm việc nhóm & Tích hợp mô hình
 
-Khi một thành viên hoàn thành huấn luyện mô hình của mình trong Jupyter Notebook:
+Khi một thành viên hoàn thành huấn luyện mô hình của mình trong Jupyter Notebook hoặc script training:
 1. Lưu mô hình dưới dạng file (ví dụ: `random_forest.pkl`, `svm.pkl`...).
-2. Bỏ file đó vào thư mục `backend/app/saved_models/`.
+2. Bỏ file đó vào thư mục `models/` ở gốc dự án.
 3. Mở file dịch vụ tương ứng tại `backend/app/services/models/{your_model}.py` và dán logic dự đoán/tiền xử lý cụ thể của bạn vào hàm `predict`.
 4. Khởi động server, API sẽ tự động chuyển trạng thái của mô hình từ **Giả lập (Mock/Placeholder)** sang **Thật (Active)**.
 *Đọc chi tiết hướng dẫn lập trình và tích hợp tại [backend/README.md](backend/README.md).*

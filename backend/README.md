@@ -6,10 +6,11 @@ Thư mục này chứa toàn bộ mã nguồn Backend của dự án dự đoán
 
 ## 1. Cấu trúc thư mục Backend cần lưu ý
 
-- `app/saved_models/`: Thư mục lưu trữ các file mô hình đã train (định dạng `.pkl`, `.joblib`, `.h5`...).
-- `app/schemas/student.py`: Nơi định nghĩa các Schema dữ liệu. Lớp `StudentFeatures` quy định đúng 30 thuộc tính đầu vào của sinh viên giống hệt tập dữ liệu `student_data.csv`.
-- `app/services/models/`: Chứa file xử lý dự đoán của từng mô hình (ví dụ: Random Forest, SVM, XGBoost, Neural Network).
-- `app/services/preprocessor.py`: Cung cấp sẵn class `DataPreprocessor` để tự động hóa việc mã hóa dữ liệu chữ (categorical) sang dữ liệu số (numerical) trước khi đưa vào mô hình.
+- `app/core/`: Chứa cấu hình môi trường lõi (config.py).
+- `app/routes/`: Chứa các API endpoints (/predict, /models).
+- `app/schemas/student.py`: Nơi định nghĩa các Schema dữ liệu. Lớp `StudentFeatures` quy định đúng các thuộc tính đầu vào của sinh viên giống hệt tập dữ liệu `Student_Performance.csv`.
+- `app/services/models/`: Chứa file xử lý dự đoán của từng mô hình (ví dụ: Random Forest, SVM, Neural Network).
+- `app/services/preprocessor.py`: Cung cấp sẵn class `DataPreprocessor` để tự động hóa việc mã hóa dữ liệu chữ sang dữ liệu số trước khi đưa vào mô hình.
 
 ---
 
@@ -46,7 +47,7 @@ Thư mục này chứa toàn bộ mã nguồn Backend của dự án dự đoán
 Khi bạn đã hoàn thành việc huấn luyện mô hình của mình trong Jupyter Notebook và lưu mô hình, hãy làm theo 3 bước sau để triển khai:
 
 ### Bước 1: Lưu file model đã train
-Bỏ file model của bạn vào thư mục `app/saved_models/`.
+Bỏ file model của bạn vào thư mục `models/` ở gốc dự án.
 - Ví dụ nếu bạn train Random Forest: đặt tên file là `random_forest.pkl`.
 
 ### Bước 2: Sửa đổi file service tương ứng trong `app/services/models/`
@@ -59,20 +60,22 @@ def predict(self, features: StudentFeatures) -> dict:
     
     # 1. Nếu mô hình thật đã được tải thành công từ file
     if self.model is not None:
-        # 2. Tiền xử lý dữ liệu thô sang mảng NumPy hoặc DataFrame
-        # DataPreprocessor sẽ tự động chuyển các chuỗi "yes"/"no", "GP"/"MS" thành số 0/1...
-        X = DataPreprocessor.preprocess_to_numpy(raw_data) # Trả về mảng 2D (1, 32)
+        # 2. Tiền xử lý dữ liệu thô sang Pandas DataFrame
+        # DataPreprocessor sẽ tự động mã hóa nhị phân, Ordinal, và One-Hot...
+        X = DataPreprocessor.preprocess_to_dataframe(raw_data) # Trả về DataFrame (1, 17)
         
-        # 3. Thực hiện dự đoán
-        prediction_val = self.model.predict(X)[0] # Điểm G3 hoặc nhãn 0, 1
+        # 3. Thực hiện dự đoán (nhãn chữ xếp hạng A-F)
+        prediction_val = self.model.predict(X)[0]
+        grade_str = str(prediction_val).upper()
         
         # 4. Trả về đúng định dạng yêu cầu
         return {
-            "prediction": float(prediction_val),
+            "prediction": grade_str,
             "probability": self.model.predict_proba(X)[0].tolist() if hasattr(self.model, "predict_proba") else None,
             "model_name": self.model_name,
             "display_name": self.display_name,
-            "success": True
+            "success": True,
+            "message": "Prediction using actual model."
         }
 ```
 
