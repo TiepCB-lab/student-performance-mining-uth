@@ -18,18 +18,18 @@ def predict_all(features: StudentFeatures):
             results[service.model_name] = PredictionResult(**res)
         except Exception as e:
             results[service.model_name] = PredictionResult(
-                prediction=0.0,
+                prediction="F",
                 model_name=service.model_name,
                 display_name=service.display_name,
                 success=False,
-                message=f"Lỗi hệ thống: {str(e)}"
+                message=f"System error: {str(e)}"
             )
     return results
 
 @router.post("/{model_name}", response_model=PredictionResult, summary="Dự đoán theo mô hình cụ thể")
 def predict_model(
     features: StudentFeatures,
-    model_name: str = Path(..., description="Tên định danh của mô hình (ví dụ: random_forest, svm, xgboost, neural_network)")
+    model_name: str = Path(..., description="Tên định danh của mô hình (ví dụ: random_forest, svm, neural_network)")
 ):
     """
     Thực hiện dự đoán điểm G3 hoặc trạng thái học tập của sinh viên dựa trên mô hình được chọn.
@@ -38,7 +38,7 @@ def predict_model(
     if not service:
         raise HTTPException(
             status_code=404,
-            detail=f"Mô hình '{model_name}' không tồn tại hoặc chưa được đăng ký trong hệ thống."
+            detail=f"Model '{model_name}' does not exist or has not been registered in the system."
         )
     
     try:
@@ -47,5 +47,5 @@ def predict_model(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Lỗi xảy ra trong quá trình xử lý của mô hình {model_name}: {str(e)}"
+            detail=f"An error occurred during the processing of model {model_name}: {str(e)}"
         )

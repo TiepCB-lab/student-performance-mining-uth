@@ -1,11 +1,11 @@
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.config import settings
-from app.routers import models, predict
+from app.core.config import settings
+from app.routes import models, predict
 
-# Đảm bảo thư mục lưu trữ model tồn tại
-os.makedirs(os.path.join(os.path.dirname(__file__), "saved_models"), exist_ok=True)
+# Đảm bảo thư mục lưu trữ mô hình tồn tại ở gốc dự án
+os.makedirs(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models")), exist_ok=True)
 
 # Khởi tạo ứng dụng FastAPI
 app = FastAPI(
@@ -33,7 +33,7 @@ def root():
     Endpoint chào mừng và kiểm tra trạng thái hoạt động của Server.
     """
     return {
-        "message": f"Chào mừng bạn đến với API {settings.PROJECT_NAME}",
+        "message": f"Welcome to the {settings.PROJECT_NAME} API",
         "version": settings.PROJECT_VERSION,
         "swagger_docs": "/docs"
     }
