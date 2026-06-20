@@ -18,9 +18,14 @@ student-performance-mining-uth/
 │   │   └── services/ # Logic tiền xử lý và nạp/dự đoán của mô hình
 │   └── run.py        # File khởi động nhanh Backend
 │
-├── frontend/         # Thư mục chứa mã nguồn giao diện Web
+├── frontend/         # Giao diện Web (ReactJS + Vite + Tailwind CSS)
+│   ├── src/          # Mã nguồn giao diện chính (App.jsx)
+│   ├── package.json  # Danh sách các thư viện Node.js
+│   └── tailwind.config.js # Cấu hình CSS
+│
 ├── data/             # Thư mục chứa tập dữ liệu
-│   └── raw/          # Lưu trữ tập dữ liệu thô ban đầu (Student_Performance.csv)
+│   ├── raw/          # Lưu trữ tập dữ liệu thô ban đầu (Student_Performance.csv)
+│   └── processed/    # Lưu trữ tập dữ liệu đã qua tiền xử lý
 ├── models/           # Thư mục lưu trữ các file mô hình đã train (.pkl, .joblib...)
 ├── notebooks/        # Thư mục lưu trữ Jupyter Notebook để EDA/Thử nghiệm nháp
 ├── training/         # Luồng huấn luyện & đánh giá mô hình dạng module sản xuất
@@ -28,6 +33,7 @@ student-performance-mining-uth/
 ├── reports/          # Thư mục lưu trữ biểu đồ và báo cáo đánh giá mô hình
 │   ├── charts/
 │   └── metrics/
+├── requirements.txt  # Quản lý thư viện chung của toàn bộ dự án
 └── README.md         # Hướng dẫn tổng quan (File này)
 ```
 
@@ -51,9 +57,9 @@ student-performance-mining-uth/
    # Hoặc trên macOS/Linux:
    source venv/bin/activate
    ```
-3. Cài đặt các thư viện:
+3. Cài đặt các thư viện (đường dẫn tương đối trỏ ra file requirements.txt ở gốc):
    ```bash
-   pip install -r requirements.txt
+   pip install -r ../requirements.txt
    ```
 4. Khởi chạy server:
    ```bash
