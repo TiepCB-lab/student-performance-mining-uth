@@ -1,39 +1,31 @@
-import os
+from __future__ import annotations
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.routes import models, predict
 
-# Đảm bảo thư mục lưu trữ mô hình tồn tại ở gốc dự án
-os.makedirs(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "models")), exist_ok=True)
+from .core.config import MODEL_PATH
+from .routes.predict import create_predict_router
+from .services.prediction import load_model_bundle
 
-# Khởi tạo ứng dụng FastAPI
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.PROJECT_VERSION,
-    description="Backend API phục vụ dự báo học lực sinh viên dựa trên kỹ thuật khai phá dữ liệu."
-)
 
-# Cấu hình CORS Middleware để Frontend gọi API thuận tiện
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+ALLOWED_ORIGINS = [
+    "http://127.0.0.1:5173",
+    "http://localhost:5173",
+]
 
-# Đăng ký các API Routers
-app.include_router(models.router, prefix=f"{settings.API_PREFIX}/models", tags=["Models Management"])
-app.include_router(predict.router, prefix=f"{settings.API_PREFIX}/predict", tags=["Predictions Engine"])
 
-@app.get("/", tags=["Root"])
-def root():
-    """
-    Endpoint chào mừng và kiểm tra trạng thái hoạt động của Server.
-    """
-    return {
-        "message": f"Welcome to the {settings.PROJECT_NAME} API",
-        "version": settings.PROJECT_VERSION,
-        "swagger_docs": "/docs"
-    }
+def create_app(bundle: dict[str, object] | None = None) -> FastAPI:
+    model_bundle = bundle if bundle is not None else load_model_bundle(MODEL_PATH)
+    app = FastAPI(title="Student Performance Mining UTH API")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    app.include_router(create_predict_router(model_bundle))
+    return app
+
+
+app = create_app()

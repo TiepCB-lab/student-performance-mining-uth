@@ -1,51 +1,53 @@
-from fastapi import APIRouter, HTTPException, Path
-from app.schemas.student import StudentFeatures, PredictionResult
-from app.services import get_model_service, list_model_services
-from typing import Dict
+from __future__ import annotations
 
-router = APIRouter()
+from typing import Any
 
-@router.post("/all", response_model=Dict[str, PredictionResult], summary="Dự đoán bằng tất cả mô hình")
-def predict_all(features: StudentFeatures):
-    """
-    Chạy dự đoán song song/đồng thời trên tất cả các mô hình đang có trong hệ thống
-    và trả về danh sách so sánh kết quả.
-    """
-    results = {}
-    for service in list_model_services():
+import pandas as pd
+from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse
+
+from ..services.form_renderer import render_form
+from ..services.prediction import predict_student
+
+
+def _coerce_payload(payload: dict[str, Any], bundle: dict[str, object]) -> pd.DataFrame:
+    schema = list(bundle["input_schema"])
+    row: dict[str, Any] = {}
+    for field in schema:
+        name = str(field["name"])
+        if name not in payload or payload[name] in (None, ""):
+            raise ValueError(f"Missing required input field: {name}")
+        row[name] = payload[name]
+    return pd.DataFrame([row])
+
+
+def create_predict_router(bundle: dict[str, object]) -> APIRouter:
+    router = APIRouter()
+
+    @router.get("/", response_class=HTMLResponse)
+    def home() -> str:
+        return render_form(bundle)
+
+    @router.get("/schema")
+    def schema() -> dict[str, object]:
+        return {"fields": bundle["input_schema"]}
+
+    @router.post("/predict")
+    async def predict(payload: dict[str, Any]) -> dict[str, object]:
         try:
-            res = service.predict(features)
-            results[service.model_name] = PredictionResult(**res)
-        except Exception as e:
-            results[service.model_name] = PredictionResult(
-                prediction="F",
-                model_name=service.model_name,
-                display_name=service.display_name,
-                success=False,
-                message=f"System error: {str(e)}"
-            )
-    return results
+            student = _coerce_payload(payload, bundle)
+            return predict_student(student, bundle)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-@router.post("/{model_name}", response_model=PredictionResult, summary="Dự đoán theo mô hình cụ thể")
-def predict_model(
-    features: StudentFeatures,
-    model_name: str = Path(..., description="Tên định danh của mô hình (ví dụ: random_forest, svm, neural_network)")
-):
-    """
-    Thực hiện dự đoán điểm G3 hoặc trạng thái học tập của sinh viên dựa trên mô hình được chọn.
-    """
-    service = get_model_service(model_name)
-    if not service:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Model '{model_name}' does not exist or has not been registered in the system."
-        )
-    
-    try:
-        res = service.predict(features)
-        return PredictionResult(**res)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"An error occurred during the processing of model {model_name}: {str(e)}"
-        )
+    @router.post("/predict-form", response_class=HTMLResponse)
+    async def predict_form(request: Request) -> str:
+        form = await request.form()
+        try:
+            student = _coerce_payload(dict(form), bundle)
+            result = predict_student(student, bundle)
+            return render_form(bundle, result)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return router
