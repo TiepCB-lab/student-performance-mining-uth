@@ -35,17 +35,34 @@ class DataPreprocessor:
         "age", "study_hours", "attendance_percentage"
     ]
 
+    # 5. Các cột nhị phân (Binary features) - cần được đưa vào feature vector
+    BINARY_COLUMNS = ["school_type", "internet_access", "extra_activities"]
+
+    # 6. Các cột tương tác (Interaction features) được tính từ features gốc
+    INTERACTION_COLUMNS = [
+        "study_hours_x_attendance",
+        "study_hours_squared",
+        "attendance_squared"
+    ]
+
     @classmethod
     def get_feature_names(cls) -> List[str]:
         """
-        Trả về danh sách đầy đủ tất cả các cột đặc trưng sau khi xử lý (tổng cộng 17 cột).
+        Trả về danh sách đầy đủ tất cả các cột đặc trưng sau khi xử lý (tổng cộng 23 cột).
         Thứ tự các cột này sẽ luôn cố định để nạp vào mô hình ML.
+        Bao gồm: 3 numerical + 3 binary + 1 ordinal + 13 one-hot + 3 interaction = 23 cột.
         """
         columns = list(cls.BASE_COLUMNS)
+        # Thêm các cột nhị phân
+        columns.extend(cls.BINARY_COLUMNS)
+        # Thêm ordinal
         columns.append("parent_education")
+        # Thêm one-hot
         for col, cats in cls.ONE_HOT_CATEGORIES.items():
             for cat in cats:
                 columns.append(f"{col}_{cat}")
+        # Thêm interaction features
+        columns.extend(cls.INTERACTION_COLUMNS)
         return columns
 
     @classmethod
@@ -55,41 +72,48 @@ class DataPreprocessor:
         """
         processed = {}
         
-        # 1. Xử lý các cột số và nhị phân
+        # 1. Xử lý các cột số (numerical features)
         for col in cls.BASE_COLUMNS:
             val = raw_data.get(col)
-            if col in cls.BINARY_MAPS:
-                # Mã hóa nhị phân 0/1
-                processed[col] = cls.BINARY_MAPS[col].get(str(val), 0)
+            if val is None:
+                processed[col] = 0.0
             else:
-                # Giá trị số nguyên hoặc float
-                if val is None:
-                    processed[col] = 0.0
+                if col in ["study_hours", "attendance_percentage"]:
+                    processed[col] = float(val)
                 else:
-                    if col in ["study_hours", "attendance_percentage"]:
-                        processed[col] = float(val)
-                    else:
-                        processed[col] = int(val)
+                    processed[col] = int(val)
+
+        # 2. Xử lý các cột nhị phân (Binary Encoding)
+        for col in cls.BINARY_COLUMNS:
+            val = raw_data.get(col)
+            processed[col] = cls.BINARY_MAPS[col].get(str(val).lower().strip(), 0)
                         
-        # 2. Xử lý mã hóa thứ tự (Ordinal Encoding)
+        # 3. Xử lý mã hóa thứ tự (Ordinal Encoding)
         for col, mapping in cls.ORDINAL_MAPS.items():
             val = raw_data.get(col)
             # Chuẩn hóa chuỗi trước khi tra cứu
             processed[col] = mapping.get(str(val).lower().strip(), 0)
                     
-        # 3. Xử lý One-Hot Encoding cho các biến Nominal còn lại
+        # 4. Xử lý One-Hot Encoding cho các biến Nominal còn lại
         for col, categories in cls.ONE_HOT_CATEGORIES.items():
             current_val = raw_data.get(col)
             for cat in categories:
                 # Tạo cột mới dạng {tên_cột}_{danh_mục} có giá trị là 1 hoặc 0
                 processed[f"{col}_{cat}"] = 1 if str(current_val) == cat else 0
+
+        # 5. Tạo Interaction Features (đặc trưng tương tác)
+        study_hours = processed.get("study_hours", 0.0)
+        attendance = processed.get("attendance_percentage", 0.0)
+        processed["study_hours_x_attendance"] = study_hours * attendance
+        processed["study_hours_squared"] = study_hours ** 2
+        processed["attendance_squared"] = attendance ** 2
                 
         return processed
 
     @classmethod
     def preprocess_to_numpy(cls, raw_data: Dict[str, Any]) -> np.ndarray:
         """
-        Chuyển đổi dữ liệu học sinh thành mảng NumPy 2D (1, 17) sẵn sàng dự đoán.
+        Chuyển đổi dữ liệu học sinh thành mảng NumPy 2D (1, 23) sẵn sàng dự đoán.
         """
         processed_dict = cls.preprocess_to_dict(raw_data)
         ordered_cols = cls.get_feature_names()
@@ -100,7 +124,7 @@ class DataPreprocessor:
     @classmethod
     def preprocess_to_dataframe(cls, raw_data: Dict[str, Any]) -> pd.DataFrame:
         """
-        Chuyển đổi dữ liệu học sinh thành Pandas DataFrame với cấu trúc cột chuẩn (17 cột).
+        Chuyển đổi dữ liệu học sinh thành Pandas DataFrame với cấu trúc cột chuẩn (23 cột).
         """
         processed_dict = cls.preprocess_to_dict(raw_data)
         df = pd.DataFrame([processed_dict])
