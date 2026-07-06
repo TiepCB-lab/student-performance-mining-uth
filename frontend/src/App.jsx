@@ -29,9 +29,14 @@ const INIT_FORM = {
 
 const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences"];
 
-const gradeColor = (g) => g >= 15 ? "#22c55e" : g >= 10 ? "#f59e0b" : "#ef4444";
-const gradeLabel = (g) => g >= 18 ? "Xuất sắc" : g >= 15 ? "Giỏi" : g >= 12 ? "Khá" : g >= 10 ? "Trung bình" : "Yếu";
-
+const gradeColor = (g) => {
+  const map = { 'A': '#22c55e', 'B': '#3b82f6', 'C': '#f59e0b', 'D': '#f97316', 'E': '#ef4444', 'F': '#7f1d1d' };
+  return map[g] || (g >= 15 ? "#22c55e" : g >= 10 ? "#f59e0b" : "#ef4444");
+};
+const gradeLabel = (g) => {
+  const map = { 'A': 'Xuất sắc', 'B': 'Giỏi', 'C': 'Khá', 'D': 'Trung bình', 'E': 'Yếu', 'F': 'Kém' };
+  return map[g] || (g >= 18 ? "Xuất sắc" : g >= 15 ? "Giỏi" : g >= 12 ? "Khá" : g >= 10 ? "Trung bình" : "Yếu");
+};
 // ── Shared field styles (inline to guarantee rendering) ──────────────────────
 const S = {
   label: { color: "#94a3b8", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "4px" },
@@ -41,9 +46,15 @@ const S = {
 
 // ── CircularGauge ────────────────────────────────────────────────────────────
 function CircularGauge({ score }) {
+  // Kiểm tra xem score có phải là hạng chữ (A-F) không
+  const isGrade = typeof score === 'string' && /^[A-F]$/.test(score);
+  const gradeToPct = { 'A': 1, 'B': 0.8, 'C': 0.6, 'D': 0.4, 'E': 0.2, 'F': 0.1 };
+  
+  const numScore = score !== null && !isGrade ? Number(score) : 0;
   const r = 54, circumference = 2 * Math.PI * r;
-  const pct = Math.max(0, Math.min(score / 20, 1));
+  const pct = isGrade ? gradeToPct[score] : Math.max(0, Math.min(numScore / 20, 1));
   const color = gradeColor(score);
+  
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
       <svg width="128" height="128" viewBox="0 0 128 128">
@@ -52,10 +63,10 @@ function CircularGauge({ score }) {
           strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct)}
           strokeLinecap="round" transform="rotate(-90 64 64)"
           style={{ transition: "stroke-dashoffset 0.8s ease" }} />
-        <text x="64" y="60" textAnchor="middle" fill="white" fontSize="26" fontWeight="bold" fontFamily="monospace">
-          {score !== null ? score.toFixed(1) : "—"}
+        <text x="64" y="60" textAnchor="middle" fill="white" fontSize="32" fontWeight="bold" fontFamily="monospace">
+          {isGrade ? score : (score !== null && !isNaN(numScore) ? numScore.toFixed(1) : "—")}
         </text>
-        <text x="64" y="78" textAnchor="middle" fill="#94a3b8" fontSize="11">/ 20.0</text>
+        <text x="64" y="78" textAnchor="middle" fill="#94a3b8" fontSize="11">{isGrade ? "Xếp hạng" : "/ 20.0"}</text>
       </svg>
       <span style={{ backgroundColor: color + "22", color, fontSize: "13px", fontWeight: 600, padding: "3px 12px", borderRadius: "999px" }}>
         {gradeLabel(score)}
@@ -132,7 +143,8 @@ function FToggle({ label, name, value, onChange }) {
         onClick={() => onChange({ target: { name, value: isYes ? "no" : "yes" } })}
         style={{ position: "relative", width: "44px", height: "24px", borderRadius: "999px", border: "none", cursor: "pointer",
           backgroundColor: isYes ? "#6366f1" : "#1e3a5f", transition: "background-color 0.2s" }}>
-        <span style={{ position: "absolute", top: "4px", width: "16px", height: "16px", borderRadius: "50%",
+        {/* Đã thêm left: 0 vào dòng bên dưới */}
+        <span style={{ position: "absolute", top: "4px", left: 0, width: "16px", height: "16px", borderRadius: "50%",
           backgroundColor: "#fff", transition: "transform 0.2s", transform: isYes ? "translateX(24px)" : "translateX(4px)" }} />
       </button>
     </div>
@@ -251,20 +263,23 @@ function SingleResult({ result }) {
         <Brain size={15} color="#818cf8" />
         <span>{result.model_name || result.display_name || "Model"}</span>
       </div>
-      <CircularGauge score={result.predicted_G3} />
+      {/* Sửa dòng dưới đây để đọc biến prediction từ Backend mới */}
+      <CircularGauge score={result.prediction || result.predicted_G3} />
       {result.message && <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "13px", maxWidth: "260px", lineHeight: 1.5 }}>{result.message}</p>}
     </div>
   );
 }
-
 function AllResults({ results }) {
   const entries = Object.entries(results);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>So sánh tất cả mô hình</p>
       {entries.map(([model, res]) => {
-        const score = res?.predicted_G3 ?? res?.prediction ?? null;
-        if (score === null) return null;
+        // Lấy dữ liệu và ép kiểu về dạng Số (Number)
+        let score = res?.predicted_G3 ?? res?.prediction ?? null;
+        if (score !== null) score = Number(score);
+
+        if (score === null || isNaN(score)) return null;
         const color = gradeColor(score);
         return (
           <div key={model} style={{ backgroundColor: "#0a1628", borderRadius: "12px", border: "1px solid #1e3a5f", padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
@@ -326,20 +341,48 @@ export default function App() {
   const fillMock = () => { setForm(MOCK_DATA); setResult(null); setAllResults(null); setError(null); };
   const reset = () => { setForm(INIT_FORM); setResult(null); setAllResults(null); setError(null); };
 
-  const submit = async () => {
+const submit = async () => {
     setLoading(true); setError(null); setResult(null); setAllResults(null);
     try {
-      const body = JSON.stringify(form);
+      // Bản đồ chuyển đổi dữ liệu từ con số trên UI sang dạng text Backend yêu cầu
+      const peduMap = { 0: "no formal", 1: "high school", 2: "diploma", 3: "graduate", 4: "post graduate", 5: "phd" };
+      const travelMap = { 1: "<15 min", 2: "15-30 min", 3: "30-60 min", 4: ">60 min" };
+
+      // 1. ÁNH XẠ DỮ LIỆU: Đã thay đổi toàn bộ biến theo đúng chuẩn Backend
+      const payloadToSubmit = {
+        gender: form.sex === "M" ? "male" : "female", 
+        school_type: form.school === "GP" ? "public" : "private", 
+        age: form.age, 
+        parent_education: peduMap[form.Medu] || "high school", 
+        study_hours: Number(form.studytime * 2), 
+        attendance_percentage: Number(Math.max(0, 100 - form.absences)), 
+        internet_access: form.internet, 
+        travel_time: travelMap[form.traveltime] || "15-30 min", // <--- Điểm mấu chốt sửa lỗi travel_time ở đây
+        extra_activities: form.activities, 
+        study_method: "notes" 
+      };
+
+      const body = JSON.stringify(payloadToSubmit);
       const headers = { "Content-Type": "application/json" };
-      if (selectedModel === "__all__") {
-        const r = await fetch(`${BASE_URL}/predict/all`, { method: "POST", headers, body });
-        if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Lỗi API"); }
-        setAllResults(await r.json());
-      } else {
-        const r = await fetch(`${BASE_URL}/predict/${selectedModel}`, { method: "POST", headers, body });
-        if (!r.ok) { const d = await r.json(); throw new Error(d.detail || "Lỗi API"); }
-        setResult(await r.json());
+      
+      const endpoint = selectedModel === "__all__" ? "predict/all" : `predict/${selectedModel}`;
+      const r = await fetch(`${BASE_URL}/${endpoint}`, { method: "POST", headers, body });
+
+      if (!r.ok) {
+        const d = await r.json();
+        
+        // 2. Format lại lỗi để hiển thị xuống dòng rõ ràng
+        if (d.detail && Array.isArray(d.detail)) {
+          const errorMessages = d.detail.map(err => `• Thiếu/Sai trường "${err.loc[err.loc.length - 1]}": ${err.msg}`).join('\n');
+          throw new Error(errorMessages);
+        }
+        throw new Error(d.detail || "Lỗi API");
       }
+
+      const data = await r.json();
+      if (selectedModel === "__all__") setAllResults(data);
+      else setResult(data);
+
     } catch (e) {
       setError(e.message || `Không kết nối được tới server tại ${BASE_URL}`);
     } finally { setLoading(false); }
@@ -356,7 +399,7 @@ export default function App() {
             <School size={18} color="#fff" />
           </div>
           <div>
-            <h1 style={{ margin: 0, fontSize: "16px", fontWeight: 700, lineHeight: 1.2 }}>Hệ thống Dự đoán Kết quả Học tập</h1>
+            <h1 style={{ margin: 0, fontSize: "16px", fontWeight: 700, lineHeight: 1.2, color: "#ffffff" }}>Hệ thống Dự đoán Kết quả Học tập</h1>
             <p style={{ margin: 0, fontSize: "12px", color: "#64748b", lineHeight: 1.2 }}>Dự đoán điểm G3 cuối kỳ dựa trên 32 đặc trưng của sinh viên</p>
           </div>
         </div>
@@ -465,7 +508,7 @@ export default function App() {
               <AlertCircle size={17} color="#f87171" style={{ flexShrink: 0, marginTop: "2px" }} />
               <div>
                 <p style={{ margin: "0 0 4px 0", fontSize: "13px", fontWeight: 600, color: "#fca5a5" }}>Lỗi kết nối</p>
-                <p style={{ margin: 0, fontSize: "12px", color: "rgba(252,165,165,0.75)", lineHeight: 1.5 }}>{error}</p>
+                <p style={{ margin: 0, fontSize: "12px", color: "rgba(252,165,165,0.75)", lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{error}</p>
               </div>
             </div>
           )}
