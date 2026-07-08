@@ -1,30 +1,88 @@
-# XGBoost model for Student_Performance.csv
+import os
+import sys
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import classification_report
-import xgboost as xgb
+import numpy as np
 import joblib
+import xgboost as xgb
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+from sklearn.model_selection import (
+    train_test_split,
+    RandomizedSearchCV,
+    learning_curve,
+    StratifiedKFold,
+    cross_val_score
+)
+
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    accuracy_score,
+    f1_score
+)
+
+# Thiết lập mã hóa UTF-8 cho console Windows
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8')
+
+# Thêm thư mục backend vào hệ thống PATH
+sys.path.append(os.path.abspath('../backend'))
+from app.services.preprocessor import DataPreprocessor
 
 # 1. Load dữ liệu
-data = pd.read_csv('../data/raw/Student_Performance.csv')
-feature_cols = ['age', 'gender', 'school_type', 'parent_education', 'study_hours',
-                'attendance_percentage', 'internet_access', 'travel_time',
-                'extra_activities', 'study_method']
+data_path = '../data/raw/Student_Performance.csv'
+if not os.path.exists(data_path):
+    print(f"❌ Data file not found at {data_path}")
+    sys.exit(1)
+
+data = pd.read_csv(data_path)
+data.columns = data.columns.str.strip()
+print(f"✅ Loaded dataset: {data.shape[0]} rows, {data.shape[1]} columns")
+
+feature_cols = [
+    'age',
+    'gender',
+    'school_type',
+    'parent_education',
+    'study_hours',
+    'attendance_percentage',
+    'internet_access',
+    'travel_time',
+    'extra_activities',
+    'study_method', 'math_score', 'science_score', 'english_score'
+]
+
+print(f"📊 Feature count: {len(feature_cols)}")
+print(f"📊 Target distribution:")
+print(data['final_grade'].value_counts().sort_index())
+print()
+
 X_features = data[feature_cols]
 target = data['final_grade']
 
-# 2. Xử lý nhãn (Target Encoding)
-# XGBoost yêu cầu target phải là số (0, 1, 2, 3...)
+# 2. Encode target
 label_encoder = LabelEncoder()
 target_encoded = label_encoder.fit_transform(target)
 
-# 3. Chia tập train/test
-X_train, X_test, y_train, y_test = train_test_split(X_features, target_encoded, test_size=0.2, random_state=42)
+num_class = len(label_encoder.classes_)
 
-# 4. Pipeline với XGBoost
+# 3. Train/Test Split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_features,
+    target_encoded,
+    test_size=0.2,
+    random_state=42,
+    stratify=target_encoded
+)
+print(f"📊 Train set: {X_train.shape[0]} rows, Test set: {X_test.shape[0]} rows\n")
+
+# 4. Tiền xử lý dữ liệu
 cat_cols = X_features.select_dtypes(include=['object']).columns
 num_cols = X_features.select_dtypes(exclude=['object']).columns
 
@@ -33,54 +91,306 @@ preprocessor = ColumnTransformer([
     ('cat', OneHotEncoder(handle_unknown='ignore'), cat_cols)
 ])
 
-# Lưu ý: use_label_encoder=False và objective='multi:softmax' cho bài toán nhiều lớp
-clf = Pipeline([
+# 5. XGBoost Model
+clf_xgb = xgb.XGBClassifier(
+
+    objective='multi:softprob',
+    num_class=num_class,
+    eval_metric='mlogloss',
+    n_estimators=100,
+    learning_rate=0.1,
+    max_depth=5,
+    random_state=42,
+    n_jobs=-1
+)
+
+pipeline = Pipeline([
     ('pre', preprocessor),
-    ('model', xgb.XGBClassifier(n_estimators=100, learning_rate=0.1, max_depth=5))
+    ('model', clf_xgb)
 ])
 
-from sklearn.model_selection import GridSearchCV
+# 6. Randomized Search
+print("="*60)
+print("Hyperparameter Tuning with RandomizedSearchCV...")
+print("="*60 + "\n")
 
-# Grid search parameters
 param_grid = {
-    'model__max_depth': [3, 5, 7],
-    'model__n_estimators': [100, 200],
-    'model__learning_rate': [0.05, 0.1]
+    'model__max_depth': [3, 4, 5, 6],
+    'model__n_estimators': [100, 200, 300],
+    'model__learning_rate': [0.03, 0.05, 0.1],
+    'model__subsample': [0.7, 0.8, 0.9],
+    'model__colsample_bytree': [0.7, 0.8, 0.9],
+    'model__min_child_weight': [3, 5, 10, 15],
+    'model__reg_alpha': [0, 0.1, 0.5, 1],
+    'model__reg_lambda': [1, 2, 5, 10],
+    'model__gamma': [0, 0.1, 0.5] 
 }
-search_cv = GridSearchCV(clf, param_grid, cv=3, scoring='f1_macro', verbose=1)
-# 5. Training
+
+search_cv = RandomizedSearchCV(
+
+    estimator=pipeline,
+
+    param_distributions=param_grid,
+
+    n_iter=30,
+
+    cv=5,
+
+    scoring='f1_macro',
+
+    random_state=42,
+
+    verbose=1,
+
+    n_jobs=-1
+
+)
+
+print("⏳ Training model...")
+
 search_cv.fit(X_train, y_train)
 
-# Mô hình được chọn (từ GridSearchCV)
 selected_model = search_cv.best_estimator_
 
-# In ra tham số được chọn
-print("Tham số được chọn:", search_cv.best_params_)
+print("\nBest Parameters:")
+print(search_cv.best_params_)
 
-from sklearn.metrics import classification_report, confusion_matrix
-import seaborn as sns
-import matplotlib.pyplot as plt
+print("\nBest CV Score (F1-Macro):")
+print(f"{search_cv.best_score_:.4f}")
 
-# 1. Dự đoán trên tập test bằng mô hình được chọn
+# 7. Prediction
 y_pred = selected_model.predict(X_test)
 
-# 2. In Classification Report
-print("\n--- CHI TIẾT CÁC CHỈ SỐ MÔ HÌNH (CLASSIFICATION REPORT) ---")
-# le.classes_ là danh sách các nhãn gốc (a, b, c, d, e, f) đã được encode
-print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
+acc = accuracy_score(y_test, y_pred)
+print(f"\n{'='*60}")
+print(f"[XGBOOST] Test Accuracy: {acc*100:.2f}%")
+print(f"{'='*60}")
 
-# 3. In Confusion Matrix (Dạng text)
-print("\n--- MA TRẬN NHẦM LẪN (CONFUSION MATRIX) ---")
+print("\nClassification Report:")
+
+print(classification_report(
+    y_test,
+    y_pred,
+    target_names=label_encoder.classes_
+))
+
+# 8. Confusion Matrix
 cm = confusion_matrix(y_test, y_pred)
-print(cm)
 
-# (Tùy chọn) 4. Vẽ Confusion Matrix để dễ nhìn hơn
-plt.figure(figsize=(8, 6))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=label_encoder.classes_, yticklabels=label_encoder.classes_)
-plt.xlabel('Dự đoán')
-plt.ylabel('Thực tế')
-plt.title('Ma trận nhầm lẫn của mô hình XGBoost')
+plt.figure(figsize=(8,6))
+
+sns.heatmap(
+
+    cm,
+
+    annot=True,
+
+    fmt='d',
+
+    cmap='Blues',
+
+    xticklabels=label_encoder.classes_,
+
+    yticklabels=label_encoder.classes_
+
+)
+
+plt.xlabel("Predicted")
+
+plt.ylabel("True")
+
+plt.title("Confusion Matrix - XGBoost")
+
+plt.tight_layout()
+
 plt.show()
 
-# Lưu mô hình được chọn
-joblib.dump(selected_model, '../models/xgboost_model.pkl')
+# 9. Kiểm tra Overfitting
+y_train_pred = selected_model.predict(X_train)
+
+y_test_pred = selected_model.predict(X_test)
+
+f1_train = f1_score(
+
+    y_train,
+
+    y_train_pred,
+
+    average='macro'
+
+)
+
+f1_test = f1_score(
+
+    y_test,
+
+    y_test_pred,
+
+    average='macro'
+
+)
+
+print("\n==============================")
+
+print("Overfitting Check")
+
+print(f"Macro-F1 Train : {f1_train:.4f}")
+
+print(f"Macro-F1 Test  : {f1_test:.4f}")
+
+print(f"Difference      : {f1_train-f1_test:.4f}")
+
+if f1_train - f1_test > 0.10:
+
+    print("⚠️ Overfitting detected")
+
+elif f1_test < 0.45:
+
+    print("⚠️ Underfitting detected")
+
+else:
+
+    print("✅ Model is stable")
+
+# 10. Cross-Validation trên toàn bộ dữ liệu
+print("\n" + "="*60)
+print("Cross-Validation on full dataset (5-fold)...")
+print("="*60)
+
+cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+cv_scores = cross_val_score(selected_model, X_features, target_encoded, cv=cv, scoring='f1_macro', n_jobs=-1)
+print(f"CV Scores: {[f'{s:.4f}' for s in cv_scores]}")
+print(f"Mean CV F1 Score: {cv_scores.mean():.4f} (+/- {cv_scores.std():.4f})\n")
+
+# 11. Feature Importance
+print("="*60)
+print("Top 10 Most Important Features")
+print("="*60)
+try:
+    model = selected_model.named_steps['model']
+    importances = model.feature_importances_
+    
+    # Lấy feature names từ preprocessor
+    preprocessor = selected_model.named_steps['pre']
+    feature_names = preprocessor.get_feature_names_out()
+    
+    indices = np.argsort(importances)[::-1][:10]
+    for i, idx in enumerate(indices):
+        print(f"  {i+1}. {feature_names[idx]}: {importances[idx]:.4f}")
+except Exception as e:
+    print(f"⚠️  Could not extract feature importance: {e}")
+
+print()
+    
+# 12. Learning Curve
+print("⏳ Generating Learning Curve...")
+
+train_sizes, train_scores, val_scores = learning_curve(
+
+    estimator=selected_model,
+
+    X=X_train,
+
+    y=y_train,
+
+    cv=5,
+
+    scoring='f1_macro',
+
+    train_sizes=np.linspace(0.1,1.0,10),
+
+    n_jobs=-1
+
+)
+
+train_mean = train_scores.mean(axis=1)
+
+train_std = train_scores.std(axis=1)
+
+val_mean = val_scores.mean(axis=1)
+
+val_std = val_scores.std(axis=1)
+
+plt.figure(figsize=(9,5))
+
+plt.plot(
+
+    train_sizes,
+
+    train_mean,
+
+    'o-',
+
+    label='Train F1'
+
+)
+
+plt.plot(
+
+    train_sizes,
+
+    val_mean,
+
+    's-',
+
+    label='Validation F1'
+
+)
+
+plt.fill_between(
+
+    train_sizes,
+
+    train_mean-train_std,
+
+    train_mean+train_std,
+
+    alpha=0.2
+
+)
+
+plt.fill_between(
+
+    train_sizes,
+
+    val_mean-val_std,
+
+    val_mean+val_std,
+
+    alpha=0.2
+
+)
+
+plt.xlabel("Number of Training Samples")
+
+plt.ylabel("Macro F1")
+
+plt.title("Learning Curve - XGBoost")
+
+plt.grid(True)
+
+plt.legend()
+
+plt.tight_layout()
+
+plt.savefig("../results/learning_curve_xgboost.png", dpi=150)
+
+plt.show()
+
+# 13. Save Model
+print("="*60)
+print("Saving Model...")
+print("="*60)
+
+save_dir = '../models'
+os.makedirs(save_dir, exist_ok=True)
+
+model_path = os.path.join(save_dir, 'xgboost_model.pkl')
+encoder_path = os.path.join(save_dir, 'label_encoder_xgboost.pkl')
+
+joblib.dump(selected_model, model_path)
+joblib.dump(label_encoder, encoder_path)
+
+print(f"XGBoost model saved to: {model_path}")
+print(f"Label encoder saved to: {encoder_path}")
+print("\n🎉 Pipeline completed successfully!")
