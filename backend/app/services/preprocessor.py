@@ -23,7 +23,6 @@ class DataPreprocessor:
     }
 
     # 3. Các danh mục định danh (Nominal) cần được One-Hot Encoding (3 danh mục trở lên)
-    # parent_education đã được chuyển sang Ordinal
     ONE_HOT_CATEGORIES = {
         "gender": ["male", "female", "other"],
         "travel_time": ["<15 min", "15-30 min", "30-60 min", ">60 min"],
@@ -34,7 +33,7 @@ class DataPreprocessor:
     BASE_COLUMNS = [
         "age", "study_hours", "attendance_percentage"
     ]
-    #bổ sung 3 cột điểm thành phần
+
     SCORE_COLUMNS = [
         "math_score", "science_score", "english_score"
     ]
@@ -55,6 +54,7 @@ class DataPreprocessor:
         Trả về danh sách đầy đủ tất cả các cột đặc trưng sau khi xử lý (tổng cộng 26 cột).
         Thứ tự các cột này sẽ luôn cố định để nạp vào mô hình ML.
         Bao gồm: 3 numerical + 3 score + 3 binary + 1 ordinal + 13 one-hot + 3 interaction = 26 cột.
+        Lưu ý: overall_score KHÔNG nằm trong danh sách này (data leakage).
         """
         columns = list(cls.BASE_COLUMNS)
         
@@ -88,8 +88,8 @@ class DataPreprocessor:
                     processed[col] = float(val)
                 else:
                     processed[col] = int(val)
-        
-        # 1b. Xử lý 3 cột điểm thành phần 
+
+        # 1b. Xử lý 3 cột điểm thành phần
         # Validate khoảng giá trị 0-100 để tránh input lỗi từ client làm sai lệch dự đoán.
         for col in cls.SCORE_COLUMNS:
             val = raw_data.get(col)
@@ -112,10 +112,11 @@ class DataPreprocessor:
                     
         # 4. Xử lý One-Hot Encoding cho các biến Nominal còn lại
         for col, categories in cls.ONE_HOT_CATEGORIES.items():
-            current_val = raw_data.get(col)
+            current_val = str(raw_data.get(col)).lower().strip()
             for cat in categories:
                 # Tạo cột mới dạng {tên_cột}_{danh_mục} có giá trị là 1 hoặc 0
-                processed[f"{col}_{cat}"] = 1 if str(current_val) == cat else 0
+                # Chuẩn hóa lower/strip để tránh vector 0 âm thầm khi input từ frontend không khớp case (vd "Male" thay vì "male").
+                processed[f"{col}_{cat}"] = 1 if current_val == cat else 0
 
         # 5. Tạo Interaction Features (đặc trưng tương tác)
         study_hours = processed.get("study_hours", 0.0)
@@ -129,7 +130,7 @@ class DataPreprocessor:
     @classmethod
     def preprocess_to_numpy(cls, raw_data: Dict[str, Any]) -> np.ndarray:
         """
-        Chuyển đổi dữ liệu học sinh thành mảng NumPy 2D (1, 23) sẵn sàng dự đoán.
+        Chuyển đổi dữ liệu học sinh thành mảng NumPy 2D (1, 26) sẵn sàng dự đoán.
         """
         processed_dict = cls.preprocess_to_dict(raw_data)
         ordered_cols = cls.get_feature_names()
