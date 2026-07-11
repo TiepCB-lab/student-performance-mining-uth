@@ -14,7 +14,7 @@ const MOCK_DATA = {
   studytime: 3, failures: 0, schoolsup: "no", famsup: "yes",
   paid: "no", activities: "yes", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 2,
-  Dalc: 1, Walc: 2, health: 4, absences: 4,
+  Dalc: 1, Walc: 2, health: 4, absences: 4, study_method: "mixed",
 };
 
 const INIT_FORM = {
@@ -24,7 +24,7 @@ const INIT_FORM = {
   studytime: 2, failures: 0, schoolsup: "no", famsup: "no",
   paid: "no", activities: "no", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 3,
-  Dalc: 1, Walc: 1, health: 3, absences: 0,
+  Dalc: 1, Walc: 1, health: 3, absences: 0, study_method: "notes",
 };
 
 const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences"];
@@ -37,6 +37,29 @@ const gradeLabel = (g) => {
   const map = { 'A': 'Xuất sắc', 'B': 'Giỏi', 'C': 'Khá', 'D': 'Trung bình', 'E': 'Yếu', 'F': 'Kém' };
   return map[g] || (g >= 18 ? "Xuất sắc" : g >= 15 ? "Giỏi" : g >= 12 ? "Khá" : g >= 10 ? "Trung bình" : "Yếu");
 };
+
+// ── Đạt / Chưa đạt (dựa trên phân tích 25.000 dòng dữ liệu thật) ─────────────
+const GRADE_PASS = { A: true, B: true, C: true, D: true, E: false, F: false };
+const PASS_STYLE = { color: "#22c55e", bg: "rgba(34,197,94,0.12)", border: "rgba(34,197,94,0.4)", text: "✓ Đạt" };
+const FAIL_STYLE = { color: "#ef4444", bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.4)", text: "✕ Chưa đạt" };
+
+function PassFailBadge({ grade, size = "normal" }) {
+  if (!(grade in GRADE_PASS)) return null;
+  const s = GRADE_PASS[grade] ? PASS_STYLE : FAIL_STYLE;
+  const isSmall = size === "small";
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: "4px",
+      backgroundColor: s.bg, color: s.color, border: `1px solid ${s.border}`,
+      borderRadius: "999px", fontWeight: 700,
+      fontSize: isSmall ? "10px" : "12px",
+      padding: isSmall ? "2px 8px" : "4px 12px",
+      whiteSpace: "nowrap",
+    }}>
+      {s.text}
+    </span>
+  );
+}
 // ── Shared field styles (inline to guarantee rendering) ──────────────────────
 const S = {
   label: { color: "#94a3b8", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "4px" },
@@ -221,6 +244,15 @@ function Tab2({ form, handle }) {
         <FSelect label="Thời gian đi học (traveltime)" name="traveltime" value={form.traveltime} onChange={handle} options={TT_OPTS} />
         <FSelect label="Thời gian tự học (studytime)" name="studytime" value={form.studytime} onChange={handle} options={ST_OPTS} />
         <FNumber label="Số lần trượt môn (failures, 0–3)" name="failures" min={0} max={3} value={form.failures} onChange={handle} />
+        <FSelect label="Phương pháp tự học (study_method)" name="study_method" value={form.study_method} onChange={handle}
+          options={[
+            { value: "notes", label: "📝 Ghi chú" },
+            { value: "textbook", label: "📖 Sách giáo khoa" },
+            { value: "group study", label: "👥 Học nhóm" },
+            { value: "coaching", label: "🎓 Học thêm / Gia sư" },
+            { value: "mixed", label: "🔀 Kết hợp nhiều cách" },
+            { value: "online videos", label: "🎥 Video online" },
+          ]} />
       </div>
       <div style={{ backgroundColor: "#0a1628", borderRadius: "12px", padding: "16px", border: "1px solid #1e3a5f", display: "flex", flexDirection: "column", gap: "10px" }}>
         <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>Hỗ trợ & Hoạt động</p>
@@ -257,14 +289,15 @@ function Tab3({ form, handle }) {
 
 // ── Result components ─────────────────────────────────────────────────────────
 function SingleResult({ result }) {
+  const grade = result.prediction || result.predicted_G3;
   return (
     <div style={{ backgroundColor: "#0a1628", borderRadius: "16px", border: "1px solid #1e3a5f", padding: "24px", display: "flex", flexDirection: "column", alignItems: "center", gap: "16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: "6px", color: "#94a3b8", fontSize: "13px" }}>
         <Brain size={15} color="#818cf8" />
         <span>{result.model_name || result.display_name || "Model"}</span>
       </div>
-      {/* Sửa dòng dưới đây để đọc biến prediction từ Backend mới */}
-      <CircularGauge score={result.prediction || result.predicted_G3} />
+      <CircularGauge score={grade} />
+      <PassFailBadge grade={grade} />
       {result.message && <p style={{ textAlign: "center", color: "#94a3b8", fontSize: "13px", maxWidth: "260px", lineHeight: 1.5 }}>{result.message}</p>}
     </div>
   );
@@ -275,28 +308,24 @@ function AllResults({ results }) {
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       <p style={{ color: "#64748b", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>So sánh tất cả mô hình</p>
       {entries.map(([model, res]) => {
-        // Lấy dữ liệu và ép kiểu về dạng Số (Number)
-        let score = res?.predicted_G3 ?? res?.prediction ?? null;
-        if (score !== null) score = Number(score);
-
-        if (score === null || isNaN(score)) return null;
-        const color = gradeColor(score);
+        // Nhãn xếp loại là chữ (A-F), không ép kiểu Number nữa
+        const grade = res?.prediction ?? null;
+        if (!grade) return null;
+        const color = gradeColor(grade);
         return (
           <div key={model} style={{ backgroundColor: "#0a1628", borderRadius: "12px", border: "1px solid #1e3a5f", padding: "12px 16px", display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ flexShrink: 0, width: "44px", height: "44px", borderRadius: "50%", backgroundColor: color + "22", color, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontWeight: 700, fontSize: "16px" }}>
-              {score.toFixed(1)}
+            <div style={{ flexShrink: 0, width: "44px", height: "44px", borderRadius: "50%", backgroundColor: color + "22", border: `2px solid ${color}`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontWeight: 800, fontSize: "18px", color }}>
+              {grade}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ color: "#e2e8f0", fontSize: "13px", fontWeight: 500, margin: "0 0 6px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <p style={{ color: "#e2e8f0", fontSize: "13px", fontWeight: 500, margin: "0 0 4px 0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {res?.display_name || model}
               </p>
-              <div style={{ height: "6px", backgroundColor: "#1e3a5f", borderRadius: "999px", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${(score / 20) * 100}%`, backgroundColor: color, borderRadius: "999px", transition: "width 0.8s ease" }} />
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ color: "#64748b", fontSize: "11px" }}>{gradeLabel(grade)}</span>
+                <PassFailBadge grade={grade} size="small" />
               </div>
             </div>
-            <span style={{ flexShrink: 0, backgroundColor: color + "22", color, fontSize: "11px", padding: "2px 8px", borderRadius: "999px", fontWeight: 600 }}>
-              {gradeLabel(score)}
-            </span>
           </div>
         );
       })}
@@ -359,7 +388,7 @@ const submit = async () => {
         internet_access: form.internet, 
         travel_time: travelMap[form.traveltime] || "15-30 min", // <--- Điểm mấu chốt sửa lỗi travel_time ở đây
         extra_activities: form.activities, 
-        study_method: "notes" 
+        study_method: form.study_method || "notes" 
       };
 
       const body = JSON.stringify(payloadToSubmit);
@@ -400,7 +429,7 @@ const submit = async () => {
           </div>
           <div>
             <h1 style={{ margin: 0, fontSize: "16px", fontWeight: 700, lineHeight: 1.2, color: "#ffffff" }}>Hệ thống Dự đoán Kết quả Học tập</h1>
-            <p style={{ margin: 0, fontSize: "12px", color: "#64748b", lineHeight: 1.2 }}>Dự đoán điểm G3 cuối kỳ dựa trên 32 đặc trưng của sinh viên</p>
+            <p style={{ margin: 0, fontSize: "12px", color: "#64748b", lineHeight: 1.2 }}>Dự đoán xếp loại học lực (A–F) dựa trên thông tin sinh viên</p>
           </div>
         </div>
       </header>
@@ -495,7 +524,7 @@ const submit = async () => {
               <RefreshCw size={14} /> Đặt lại
             </button>
             <button onClick={submit} disabled={loading} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: "10px 20px", borderRadius: "10px", border: "none", backgroundColor: loading ? "#3730a3" : "#4f46e5", color: "#fff", fontSize: "14px", fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", transition: "background-color 0.2s" }}>
-              {loading ? <><Loader2 size={16} className="animate-spin" /> Đang xử lý...</> : <><Brain size={16} /> Dự đoán G3</>}
+              {loading ? <><Loader2 size={16} className="animate-spin" /> Đang xử lý...</> : <><Brain size={16} /> Dự đoán xếp loại</>}
             </button>
           </div>
         </div>
@@ -519,7 +548,7 @@ const submit = async () => {
                 <Brain size={22} color="#818cf8" />
               </div>
               <p style={{ color: "#64748b", fontSize: "13px", lineHeight: 1.6, margin: 0 }}>
-                Kết quả dự đoán sẽ hiển thị ở đây sau khi bạn nhấn <strong style={{ color: "#94a3b8" }}>Dự đoán G3</strong>.
+                Kết quả dự đoán sẽ hiển thị ở đây sau khi bạn nhấn <strong style={{ color: "#94a3b8" }}>Dự đoán xếp loại</strong>.
               </p>
             </div>
           )}
@@ -548,7 +577,7 @@ const submit = async () => {
           {/* Tips */}
           <div style={{ backgroundColor: "#0a1628", borderRadius: "16px", border: "1px solid #1e3a5f", padding: "14px 16px" }}>
             <p style={{ margin: "0 0 8px 0", color: "#64748b", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>Hướng dẫn nhanh</p>
-            {["Điền đầy đủ 3 tab để đảm bảo độ chính xác", 'Nhấn "Dữ liệu mẫu" để test nhanh toàn bộ form', 'Chọn "Tất cả mô hình" để so sánh kết quả', "G3 được tính theo thang điểm 0 – 20"].map((tip, i) => (
+            {["Điền đầy đủ 3 tab để đảm bảo độ chính xác", 'Nhấn "Dữ liệu mẫu" để test nhanh toàn bộ form', 'Chọn "Tất cả mô hình" để so sánh kết quả', "Kết quả xếp loại theo thang A (Xuất sắc) đến F (Kém)"].map((tip, i) => (
               <p key={i} style={{ margin: "4px 0 0 0", color: "#475569", fontSize: "12px", lineHeight: 1.5 }}>• {tip}</p>
             ))}
           </div>
