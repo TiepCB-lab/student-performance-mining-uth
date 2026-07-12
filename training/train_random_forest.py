@@ -3,9 +3,11 @@ import sys
 import joblib
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold, cross_val_score
+from sklearn.model_selection import train_test_split, RandomizedSearchCV, StratifiedKFold, cross_val_score, learning_curve
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, f1_score
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Thiết lập mã hóa UTF-8 cho console Windows
 if hasattr(sys.stdout, 'reconfigure'):
@@ -117,10 +119,72 @@ indices = np.argsort(importances)[::-1]
 for i in range(min(10, len(feature_cols))):
     print(f"  {i+1}. {feature_cols[indices[i]]} ({importances[indices[i]]:.4f})")
 
-# 8. Lưu mô hình vào backend
+# 8. Vẽ và lưu Confusion Matrix
+print("\n" + "="*60)
+print("Generating Confusion Matrix...")
+print("="*60)
+cm = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(8,6))
+sns.heatmap(
+    cm,
+    annot=True,
+    fmt='d',
+    cmap='Blues',
+    xticklabels=target_labels,
+    yticklabels=target_labels
+)
+plt.xlabel("Predicted")
+plt.ylabel("True")
+plt.title("Confusion Matrix - Random Forest")
+plt.tight_layout()
+
+results_dir = '../results'
+os.makedirs(results_dir, exist_ok=True)
+cm_path = os.path.join(results_dir, 'confusion_matrix_random_forest.png')
+plt.savefig(cm_path, dpi=150)
+plt.close()
+print(f"Confusion matrix saved to: {cm_path}")
+
+# 9. Vẽ và lưu Learning Curve
+print("\n" + "="*60)
+print("Generating Learning Curve...")
+print("="*60)
+train_sizes, train_scores, val_scores = learning_curve(
+    estimator=model,
+    X=X_train,
+    y=y_train,
+    cv=cv,
+    scoring='f1_macro',
+    train_sizes=np.linspace(0.1, 1.0, 10),
+    n_jobs=-1
+)
+
+train_mean = train_scores.mean(axis=1)
+train_std = train_scores.std(axis=1)
+val_mean = val_scores.mean(axis=1)
+val_std = val_scores.std(axis=1)
+
+plt.figure(figsize=(9,5))
+plt.plot(train_sizes, train_mean, 'o-', label='Train F1')
+plt.plot(train_sizes, val_mean, 's-', label='Validation F1')
+plt.fill_between(train_sizes, train_mean - train_std, train_mean + train_std, alpha=0.2)
+plt.fill_between(train_sizes, val_mean - val_std, val_mean + val_std, alpha=0.2)
+plt.xlabel("Number of Training Samples")
+plt.ylabel("Macro F1")
+plt.title("Learning Curve - Random Forest")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+lc_path = os.path.join(results_dir, 'learning_curve_random_forest.png')
+plt.savefig(lc_path, dpi=150)
+plt.close()
+print(f"Learning curve saved to: {lc_path}")
+
+# 10. Lưu mô hình vào backend
 save_dir = '../models'
 os.makedirs(save_dir, exist_ok=True)
-model_path = os.path.join(save_dir, 'random_forest.pkl')
+model_path = os.path.join(save_dir, 'random_forest_model.pkl')
 joblib.dump(model, model_path)
 print(f"\nMulti-class model saved successfully to: {model_path}!")
 print(f"Model uses {len(feature_cols)} features (including binary + interaction features).")

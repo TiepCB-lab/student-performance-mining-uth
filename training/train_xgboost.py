@@ -37,15 +37,15 @@ from app.services.preprocessor import DataPreprocessor
 # 1. Load dữ liệu
 data_path = '../data/raw/Student_Performance.csv'
 if not os.path.exists(data_path):
-    print(f"❌ Data file not found at {data_path}")
+    print(f"Data file not found at {data_path}")
     sys.exit(1)
 
 df_raw = pd.read_csv(data_path)
 df_raw.columns = df_raw.columns.str.strip()
-print(f"✅ Loaded dataset: {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")
+print(f"Loaded dataset: {df_raw.shape[0]} rows, {df_raw.shape[1]} columns")
 
 # 2. Tiền xử lý dữ liệu bằng DataPreprocessor từ backend
-print("🔄 Preprocessing features using backend DataPreprocessor...")
+print("Preprocessing features using backend DataPreprocessor...")
 processed_records = []
 for _, row in df_raw.iterrows():
     processed_records.append(DataPreprocessor.preprocess_to_dict(row.to_dict()))
@@ -70,13 +70,13 @@ df_processed = df_processed.rename(columns=mapping)
 feature_cols = sanitized
 X_features = df_processed[feature_cols]
 
-print(f"📊 Feature count: {len(feature_cols)}")
-print(f"📊 Feature names: {feature_cols}")
+print(f"Feature count: {len(feature_cols)}")
+print(f"Feature names: {feature_cols}")
 
 # Nhãn mục tiêu (A-F)
 target = df_raw['final_grade']
 
-print(f"📊 Target distribution:")
+print(f"Target distribution:")
 print(target.value_counts().sort_index())
 print()
 
@@ -93,7 +93,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42,
     stratify=target_encoded
 )
-print(f"📊 Train set: {X_train.shape[0]} rows, Test set: {X_test.shape[0]} rows\n")
+print(f"Train set: {X_train.shape[0]} rows, Test set: {X_test.shape[0]} rows\n")
 
 # 5. XGBoost Model
 clf_xgb = xgb.XGBClassifier(
@@ -220,15 +220,15 @@ print(f"Difference      : {f1_train-f1_test:.4f}")
 
 if f1_train - f1_test > 0.10:
 
-    print("⚠️ Overfitting detected")
+    print("Warning: Overfitting detected")
 
 elif f1_test < 0.45:
 
-    print("⚠️ Underfitting detected")
+    print("Warning: Underfitting detected")
 
 else:
 
-    print("✅ Model is stable")
+    print("Model is stable")
 
 # 10. Cross-Validation trên toàn bộ dữ liệu
 # Lưu ý: selected_model đã được chọn (tune hyperparameter) dựa trên X_train,
@@ -254,12 +254,12 @@ try:
     for i, idx in enumerate(indices):
         print(f"  {i+1}. {feature_names[idx]}: {importances[idx]:.4f}")
 except Exception as e:
-    print(f"⚠️  Could not extract feature importance: {e}")
+    print(f"Warning: Could not extract feature importance: {e}")
 
 print()
     
 # 12. Learning Curve
-print("⏳ Generating Learning Curve...")
+print("Generating Learning Curve...")
 
 train_sizes, train_scores, val_scores = learning_curve(
     estimator=selected_model,
@@ -359,4 +359,4 @@ print(f"XGBoost model saved to: {model_path}")
 encoder_path = os.path.join(save_dir, 'label_encoder_xgboost.pkl')
 joblib.dump(label_encoder, encoder_path)
 print(f"Label encoder saved to: {encoder_path}")
-print("\n🎉 Pipeline completed successfully!")
+print("\nPipeline completed successfully!")
