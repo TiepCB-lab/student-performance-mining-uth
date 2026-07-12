@@ -7,7 +7,7 @@ from app.schemas.student import StudentFeatures
 class RandomForestService(BaseModelService):
     def __init__(self):
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        model_path = os.path.abspath(os.path.join(current_dir, "..", "..", "..", "..", "models", "random_forest.pkl"))
+        model_path = os.path.abspath(os.path.join(current_dir, "..", "..", "..", "..", "models", "random_forest_model.pkl"))
         super().__init__(
             model_name="random_forest",
             display_name="Random Forest",
