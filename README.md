@@ -34,12 +34,15 @@ student-performance-mining-uth/
 │   ├── 01_data_understanding.ipynb   # Tìm hiểu dữ liệu
 │   ├── 02_eda.ipynb                  # Phân tích khám phá (EDA)
 │   ├── 03_preprocessing.ipynb        # Tiền xử lý dữ liệu
-│   ├── models/                       # Thư mục chứa notebook huấn luyện
-│   │   └── 04_train_random_forest.ipynb
-│   └── 05_model_comparison.ipynb     # So sánh hiệu năng các mô hình
+│   ├── 04_train_random_forest.ipynb  # Huấn luyện Random Forest
+│   ├── 05_train_xgboost.ipynb        # Huấn luyện XGBoost
+│   ├── 06_train_lightgbm.ipynb       # Huấn luyện LightGBM
+│   └── 07_model_comparison.ipynb     # So sánh hiệu năng các mô hình
 │
 ├── training/               # Script huấn luyện dạng production
-│   └── train.py
+│   ├── train_random_forest.py        # Script train Random Forest
+│   ├── train_xgboost.py              # Script train XGBoost
+│   └── train_lightgbm.py             # Script train LightGBM
 │
 ├── reports/                # Biểu đồ và báo cáo đánh giá mô hình
 │   ├── charts/
