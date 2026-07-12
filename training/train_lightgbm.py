@@ -150,7 +150,7 @@ def main():
     plt.ylabel("Actual")
     plt.title("Confusion Matrix - LightGBM Classifier")
     plt.tight_layout()
-    plt.show()
+    # plt.show()
 
     y_train_pred = model.predict(X_train)
     f1_train = f1_score(y_train, y_train_pred, average="macro")
@@ -205,7 +205,7 @@ def main():
     os.makedirs(RESULTS_DIR, exist_ok=True)
     learning_curve_path = os.path.join(RESULTS_DIR, "learning_curve_lightgbm.png")
     plt.savefig(learning_curve_path, dpi=150)
-    plt.show()
+    # plt.show()
     print(f"Learning curve saved to: {learning_curve_path}")
 
     os.makedirs(MODELS_DIR, exist_ok=True)
