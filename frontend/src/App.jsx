@@ -15,6 +15,7 @@ const MOCK_DATA = {
   paid: "no", activities: "yes", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 2,
   Dalc: 1, Walc: 2, health: 4, absences: 4, study_method: "mixed",
+  math_score: 75, science_score: 82, english_score: 78,
 };
 
 const INIT_FORM = {
@@ -25,9 +26,10 @@ const INIT_FORM = {
   paid: "no", activities: "no", higher: "yes", nursery: "yes",
   internet: "yes", romantic: "no", freetime: 3, goout: 3,
   Dalc: 1, Walc: 1, health: 3, absences: 0, study_method: "notes",
+  math_score: 60, science_score: 60, english_score: 60,
 };
 
-const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences"];
+const NUM_FIELDS = ["age","Medu","Fedu","traveltime","studytime","failures","famrel","freetime","goout","Dalc","Walc","health","absences","math_score","science_score","english_score"];
 
 const gradeColor = (g) => {
   const map = { 'A': '#22c55e', 'B': '#3b82f6', 'C': '#f59e0b', 'D': '#f97316', 'E': '#ef4444', 'F': '#7f1d1d' };
@@ -62,70 +64,89 @@ function PassFailBadge({ grade, size = "normal" }) {
 }
 // ── Shared field styles (inline to guarantee rendering) ──────────────────────
 const S = {
-  label: { color: "#94a3b8", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: "4px" },
-  input: { width: "100%", backgroundColor: "#0f1e35", border: "1px solid #1e3a5f", color: "#ffffff", borderRadius: "8px", padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box" },
-  inputFocused: { width: "100%", backgroundColor: "#0f1e35", border: "1px solid #6366f1", color: "#ffffff", borderRadius: "8px", padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box" },
+  label: { 
+    color: "#94a3b8", 
+    fontSize: "12px", 
+    fontWeight: 600, 
+    textTransform: "uppercase", 
+    letterSpacing: "0.06em", 
+    marginBottom: "6px",
+    display: "block"
+  },
+  input: { 
+    width: "100%", 
+    backgroundColor: "#0f172a", 
+    border: "1px solid #334155", 
+    color: "#f1f5f9", 
+    borderRadius: "12px", 
+    padding: "10px 14px", 
+    fontSize: "14px", 
+    outline: "none",
+    transition: "all 0.2s ease"
+  },
+  inputFocused: { 
+    borderColor: "#6366f1", 
+    boxShadow: "0 0 0 3px rgba(99, 102, 241, 0.15)" 
+  },
 };
 
-// ── CircularGauge ────────────────────────────────────────────────────────────
+/// ── CircularGauge đẹp hơn ─────────────────────────────────────────────
+// Thay thế toàn bộ function CircularGauge cũ bằng đoạn này:
 function CircularGauge({ score }) {
-  // Kiểm tra xem score có phải là hạng chữ (A-F) không
   const isGrade = typeof score === 'string' && /^[A-F]$/.test(score);
-  const gradeToPct = { 'A': 1, 'B': 0.8, 'C': 0.6, 'D': 0.4, 'E': 0.2, 'F': 0.1 };
+  const gradeToPct = { 'A': 1, 'B': 0.85, 'C': 0.65, 'D': 0.45, 'E': 0.25, 'F': 0.1 };
   
-  const numScore = score !== null && !isGrade ? Number(score) : 0;
-  const r = 54, circumference = 2 * Math.PI * r;
+  const numScore = !isGrade && score !== null ? Number(score) : 0;
+  const r = 58;
+  const circumference = 2 * Math.PI * r;
   const pct = isGrade ? gradeToPct[score] : Math.max(0, Math.min(numScore / 20, 1));
   const color = gradeColor(score);
-  
+  const strokeDashoffset = circumference - pct * circumference;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
-      <svg width="128" height="128" viewBox="0 0 128 128">
-        <circle cx="64" cy="64" r={r} fill="none" stroke="#1e2d4a" strokeWidth="10" />
-        <circle cx="64" cy="64" r={r} fill="none" stroke={color} strokeWidth="10"
-          strokeDasharray={circumference} strokeDashoffset={circumference * (1 - pct)}
-          strokeLinecap="round" transform="rotate(-90 64 64)"
-          style={{ transition: "stroke-dashoffset 0.8s ease" }} />
-        <text x="64" y="60" textAnchor="middle" fill="white" fontSize="32" fontWeight="bold" fontFamily="monospace">
-          {isGrade ? score : (score !== null && !isNaN(numScore) ? numScore.toFixed(1) : "—")}
-        </text>
-        <text x="64" y="78" textAnchor="middle" fill="#94a3b8" fontSize="11">{isGrade ? "Xếp hạng" : "/ 20.0"}</text>
+    <div style={{ position: "relative", width: "140px", height: "140px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width="140" height="140" style={{ transform: "rotate(-90deg)" }}>
+        {/* Vòng nền mờ */}
+        <circle cx="70" cy="70" r={r} stroke="#1e3a5f" strokeWidth="12" fill="none" />
+        {/* Vòng màu điểm số */}
+        <circle cx="70" cy="70" r={r} stroke={color} strokeWidth="12" fill="none" 
+                strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} 
+                style={{ transition: "stroke-dashoffset 1s ease-in-out" }} strokeLinecap="round" />
       </svg>
-      <span style={{ backgroundColor: color + "22", color, fontSize: "13px", fontWeight: 600, padding: "3px 12px", borderRadius: "999px" }}>
-        {gradeLabel(score)}
-      </span>
+      {/* Hiển thị điểm số ở giữa vòng tròn */}
+      <div style={{ position: "absolute", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <span style={{ fontSize: "36px", fontWeight: 800, color: "#fff", lineHeight: 1 }}>{score}</span>
+        <span style={{ fontSize: "12px", color: "#94a3b8", marginTop: "4px", fontWeight: 600 }}>{gradeLabel(score)}</span>
+      </div>
     </div>
   );
 }
-
-// ── Form field components ─────────────────────────────────────────────────────
+// ── Các component input giữ nguyên logic, chỉ tinh chỉnh style ─────────
 function FSelect({ label, name, options, value, onChange }) {
   const [focused, setFocused] = useState(false);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+    <div>
       <label style={S.label}>{label}</label>
       <select
         name={name} value={value} onChange={onChange}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={focused ? S.inputFocused : S.input}
+        style={{ ...S.input, ...(focused ? S.inputFocused : {}) }}
       >
-        {options.map(o => (
-          <option key={o.value} value={o.value} style={{ backgroundColor: "#0f1e35", color: "#fff" }}>{o.label}</option>
-        ))}
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </div>
   );
 }
 
-function FNumber({ label, name, min, max, value, onChange }) {
+function FNumber({ label, name, min, max, step, value, onChange }) {
   const [focused, setFocused] = useState(false);
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px", height: "100%", justifyContent: "flex-end" }}>
       <label style={S.label}>{label}</label>
       <input
-        type="number" name={name} min={min} max={max} value={value} onChange={onChange}
+        type="number" name={name} min={min} max={max} step={step || 1} value={value} onChange={onChange}
         onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-        style={focused ? S.inputFocused : S.input}
+        style={{ ...S.input, ...(focused ? S.inputFocused : {}) }}
       />
     </div>
   );
@@ -283,6 +304,14 @@ function Tab3({ form, handle }) {
         <FSlider label="Sức khỏe hiện tại (health)" name="health" min={1} max={5} value={form.health} onChange={handle} />
         <FNumber label="Số buổi nghỉ học (absences, 0–93)" name="absences" min={0} max={93} value={form.absences} onChange={handle} />
       </div>
+      <div style={{ backgroundColor: "#0a1628", borderRadius: "12px", padding: "16px", border: "1px solid rgba(99,102,241,0.3)", display: "flex", flexDirection: "column", gap: "12px" }}>
+        <p style={{ color: "#818cf8", fontSize: "11px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", margin: 0 }}>📊 Điểm số các môn học (0–100)</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "20px" }}>
+          <FNumber label="Điểm Toán (math_score)" name="math_score" min={0} max={100} step={0.1} value={form.math_score} onChange={handle} />
+          <FNumber label="Điểm Khoa học (science_score)" name="science_score" min={0} max={100} step={0.1} value={form.science_score} onChange={handle} />
+          <FNumber label="Điểm Tiếng Anh (english_score)" name="english_score" min={0} max={100} step={0.1} value={form.english_score} onChange={handle} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -388,7 +417,10 @@ const submit = async () => {
         internet_access: form.internet, 
         travel_time: travelMap[form.traveltime] || "15-30 min", // <--- Điểm mấu chốt sửa lỗi travel_time ở đây
         extra_activities: form.activities, 
-        study_method: form.study_method || "notes" 
+        study_method: form.study_method || "notes",
+        math_score: Number(form.math_score),
+        science_score: Number(form.science_score),
+        english_score: Number(form.english_score),
       };
 
       const body = JSON.stringify(payloadToSubmit);
