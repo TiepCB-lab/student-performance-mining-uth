@@ -1,6 +1,9 @@
 import os
+import re
+import joblib
 import pandas as pd
 from app.services.base_model import BaseModelService
+from app.services.preprocessor import DataPreprocessor
 from app.schemas.student import StudentFeatures
 
 class XGBoostService(BaseModelService):
@@ -20,23 +23,39 @@ class XGBoostService(BaseModelService):
         # Nếu đã tải được mô hình thật từ file
         if self.model is not None:
             try:
-                # Tạo raw DataFrame từ dict thô
-                raw_df = pd.DataFrame([raw_data])
+                # Tiền xử lý dữ liệu bằng DataPreprocessor chuẩn của dự án (26 đặc trưng)
+                X = DataPreprocessor.preprocess_to_dataframe(raw_data)
                 
-                # Thứ tự các cột đặc trưng mà pipeline huấn luyện của leader mong đợi
-                expected_cols = [
-                    'age', 'gender', 'school_type', 'parent_education', 'study_hours',
-                    'attendance_percentage', 'internet_access', 'travel_time',
-                    'extra_activities', 'study_method', 'math_score', 'science_score', 'english_score'
-                ]
-                X = raw_df[expected_cols]
+                # Sanitize đặc trưng để tương thích với XGBoost (giống lúc train)
+                feature_cols_original = DataPreprocessor.get_feature_names()
+                sanitized = []
+                seen = {}
+                for col in feature_cols_original:
+                    s = re.sub(r'[^0-9a-zA-Z_]', '_', col)
+                    if s in seen:
+                        seen[s] += 1
+                        s = f"{s}_{seen[s]}"
+                    else:
+                        seen[s] = 0
+                    sanitized.append(s)
+
+                mapping = dict(zip(feature_cols_original, sanitized))
+                X = X.rename(columns=mapping)
+                X = X[sanitized]
                 
-                # Dự đoán qua pipeline (sẽ tự động chạy ColumnTransformer)
+                # Dự đoán qua mô hình XGBoost thật
                 prediction_idx = self.model.predict(X)[0]
                 
-                # Giải mã nhãn: LabelEncoder xếp 'a'-'f' tương ứng 0-5
-                classes = ['A', 'B', 'C', 'D', 'E', 'F']
-                grade_str = classes[int(prediction_idx)]
+                # Nạp Label Encoder của XGBoost để giải mã ngược sang nhãn chữ (A-F)
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                encoder_path = os.path.abspath(os.path.join(current_dir, "..", "..", "..", "..", "models", "label_encoder_xgboost.pkl"))
+                
+                if os.path.exists(encoder_path):
+                    le = joblib.load(encoder_path)
+                    grade_str = str(le.inverse_transform([prediction_idx])[0]).upper()
+                else:
+                    classes = ['A', 'B', 'C', 'D', 'E', 'F']
+                    grade_str = classes[int(prediction_idx)]
                 
                 # Lấy xác suất phân lớp
                 probability_list = None
@@ -53,7 +72,7 @@ class XGBoostService(BaseModelService):
                     "model_name": self.model_name,
                     "display_name": self.display_name,
                     "success": True,
-                    "message": "Prediction using actual XGBoost model pipeline."
+                    "message": "Prediction using actual XGBoost model."
                 }
             except Exception as e:
                 return {
